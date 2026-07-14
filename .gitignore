@@ -22,3 +22,30 @@
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+
+# ===== Gradle =====
+backend/.gradle/
+backend/build/
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+out/
+
+# ===== Gleam =====
+frontend/build/
+frontend/.gleam_modules/
+
+# ===== Node(Gleam開発時に稀に生成される) =====
+node_modules/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== 環境変数・秘密情報(NiigataProjectの反省を活かす) =====
+.env
+*.env.local
+application-secrets.properties

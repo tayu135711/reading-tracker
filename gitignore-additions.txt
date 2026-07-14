@@ -1,0 +1,34 @@
+
+# ===== Gradle =====
+backend/.gradle/
+backend/build/
+!backend/gradle/wrapper/gradle-wrapper.jar
+backend/gradlew
+backend/gradlew.bat
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+out/
+
+# ===== Kotlin/Java =====
+*.class
+*.jar
+!gradle-wrapper.jar
+
+# ===== Gleam =====
+frontend/build/
+frontend/.gleam_modules/
+
+# ===== Node(Gleam開発時に稀に生成される) =====
+node_modules/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== 環境変数・秘密情報(NiigataProjectの反省を活かす) =====
+.env
+*.env.local
+application-secrets.properties

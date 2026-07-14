@@ -4,8 +4,8 @@ import lustre/effect.{type Effect}
 import lustre_http
 import types.{type Book, books_decoder, share_uuid_decoder}
 
-// 開発中はlocalhost、Renderにデプロイしたらここを実際のURLに差し替える
-const api_base = "http://localhost:8080/api"
+// 本番バックエンド(Render)のURL
+const api_base = "https://reading-tracker-backend-wc3c.onrender.com/api"
 
 // 一覧取得
 pub fn fetch_books(

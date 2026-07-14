@@ -1,16 +1,13 @@
 # ===== ビルドステージ =====
-FROM eclipse-temurin:17-jdk-jammy AS build
+FROM gradle:8.10-jdk17-jammy AS build
 WORKDIR /app
 
 # 依存関係だけ先にコピーしてキャッシュを効かせる
-COPY gradlew .
-COPY gradle gradle
 COPY build.gradle.kts settings.gradle.kts ./
-RUN chmod +x gradlew
 
 # ソースをコピーしてビルド
 COPY src src
-RUN ./gradlew build -x test --no-daemon
+RUN gradle build -x test --no-daemon
 
 # ===== 実行ステージ =====
 FROM eclipse-temurin:17-jre-jammy

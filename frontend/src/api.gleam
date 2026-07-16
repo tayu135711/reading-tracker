@@ -1,13 +1,14 @@
+import gleam/http
+import gleam/http/request
 import gleam/int
 import gleam/json
 import lustre/effect.{type Effect}
 import lustre_http
-import types.{type Book, books_decoder, share_uuid_decoder}
+import types.{type Book, type LookupResult, books_decoder, lookup_decoder, share_uuid_decoder}
 
 // 本番バックエンド(Render)のURL
 const api_base = "https://reading-tracker-backend-wc3c.onrender.com/api"
 
-// 一覧取得
 pub fn fetch_books(
   on_result: fn(Result(List(Book), lustre_http.HttpError)) -> msg,
 ) -> Effect(msg) {
@@ -17,19 +18,23 @@ pub fn fetch_books(
   )
 }
 
-// 登録(成功したらMsgだけ返す。一覧の再取得はupdate側でfetch_booksを呼ぶ)
 pub fn create_book(
   title: String,
   author: String,
   genre: String,
+  cover_url: String,
   on_result: fn(Result(Nil, lustre_http.HttpError)) -> msg,
 ) -> Effect(msg) {
+  let cover_json = case cover_url {
+    "" -> json.null()
+    url -> json.string(url)
+  }
   let body =
     json.object([
       #("title", json.string(title)),
       #("author", json.string(author)),
       #("genre", json.string(genre)),
-      #("coverUrl", json.null()),
+      #("coverUrl", cover_json),
       #("status", json.string("UNREAD")),
     ])
 
@@ -40,7 +45,6 @@ pub fn create_book(
   )
 }
 
-// 感想を追加
 pub fn add_review(
   book_id: Int,
   rating: Int,
@@ -60,7 +64,6 @@ pub fn add_review(
   )
 }
 
-// おすすめ用の共有リンクを発行する(友達に送るURLのuuidを取得)
 pub fn create_share_link(
   book_id: Int,
   on_result: fn(Result(String, lustre_http.HttpError)) -> msg,
@@ -69,5 +72,16 @@ pub fn create_share_link(
     api_base <> "/books/" <> int.to_string(book_id) <> "/share",
     json.object([]),
     lustre_http.expect_json(share_uuid_decoder(), on_result),
+  )
+}
+
+// ISBNから書誌情報を検索する(OpenBD連携、バックエンド経由)
+pub fn lookup_isbn(
+  isbn: String,
+  on_result: fn(Result(LookupResult, lustre_http.HttpError)) -> msg,
+) -> Effect(msg) {
+  lustre_http.get(
+    api_base <> "/books/lookup?isbn=" <> isbn,
+    lustre_http.expect_json(lookup_decoder(), on_result),
   )
 }

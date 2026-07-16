@@ -1,5 +1,5 @@
 import gleam/dynamic/decode
-import gleam/option.{type Option, None, Some}
+import gleam/option.{type Option}
 
 pub type BookStatus {
   Unread
@@ -47,6 +47,16 @@ pub type Book {
   )
 }
 
+pub type LookupResult {
+  LookupResult(
+    found: Bool,
+    title: Option(String),
+    author: Option(String),
+    cover_url: Option(String),
+    publisher: Option(String),
+  )
+}
+
 // ===== JSONデコーダー =====
 // バックエンド(Kotlin/Spring Boot)が返すJSONの形と1対1で対応させる
 
@@ -84,4 +94,13 @@ pub fn books_decoder() -> decode.Decoder(List(Book)) {
 pub fn share_uuid_decoder() -> decode.Decoder(String) {
   use uuid <- decode.field("uuid", decode.string)
   decode.success(uuid)
+}
+
+pub fn lookup_decoder() -> decode.Decoder(LookupResult) {
+  use found <- decode.field("found", decode.bool)
+  use title <- decode.field("title", decode.optional(decode.string))
+  use author <- decode.field("author", decode.optional(decode.string))
+  use cover_url <- decode.field("coverUrl", decode.optional(decode.string))
+  use publisher <- decode.field("publisher", decode.optional(decode.string))
+  decode.success(LookupResult(found, title, author, cover_url, publisher))
 }

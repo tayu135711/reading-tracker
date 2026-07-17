@@ -1,0 +1,561 @@
+/* ===========================================================
+   蔵書録 — 木製書斎テーマ
+   古い書斎の本棚、真鍮の金具、羊皮紙の台帳をイメージした配色
+   =========================================================== */
+
+:root {
+  --wood-dark: #241811;
+  --wood-mid: #3E2C1E;
+  --wood-panel: #4A3423;
+  --parchment: #E9DBB8;
+  --parchment-dim: #C9B888;
+  --brass: #B08D57;
+  --brass-bright: #D4AF6A;
+  --ink: #241811;
+  --forest: #4A5D43;
+  --wine: #7A3B2E;
+
+  --font-display: "Cormorant Garamond", "Hiragino Mincho ProN", serif;
+  --font-body: "EB Garamond", "Noto Serif JP", serif;
+  --font-mono: "Courier Prime", "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--wood-dark);
+  color: var(--parchment);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+body {
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.12) 0px,
+      rgba(0, 0, 0, 0.12) 1px,
+      transparent 1px,
+      transparent 80px
+    ),
+    linear-gradient(180deg, #2A1D14 0%, #1C130D 100%);
+}
+
+#app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 24px 96px;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--brass);
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+
+/* ===== 認証画面 ===== */
+
+.study-room {
+  display: block;
+}
+
+.lectern {
+  max-width: 420px;
+  margin: 80px auto;
+  background: var(--wood-panel);
+  border: 1px solid rgba(176, 141, 87, 0.4);
+  border-radius: 2px;
+  padding: 40px 36px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 24px 48px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.lectern::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  border: 1px solid rgba(176, 141, 87, 0.25);
+  pointer-events: none;
+}
+
+.lectern-title {
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--parchment);
+}
+
+.lectern-sub {
+  font-style: italic;
+  color: var(--parchment-dim);
+  margin: 0 0 28px;
+}
+
+/* ===== 本棚メイン画面 ===== */
+
+.study-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+  border-bottom: 2px solid var(--brass);
+  padding-bottom: 16px;
+}
+
+.study-title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--parchment);
+}
+
+/* ===== パネル・台帳フォーム ===== */
+
+.brass-panel {
+  background: var(--wood-panel);
+  border: 1px solid rgba(176, 141, 87, 0.35);
+  border-radius: 2px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.panel-label {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--brass-bright);
+  margin: 0 0 14px;
+}
+
+.ledger-field {
+  margin-bottom: 16px;
+}
+
+.ledger-field label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--parchment-dim);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+input,
+textarea {
+  width: 100%;
+  background: rgba(233, 219, 184, 0.06);
+  border: 1px solid rgba(176, 141, 87, 0.4);
+  border-radius: 2px;
+  padding: 10px 12px;
+  color: var(--parchment);
+  font-family: var(--font-body);
+  font-size: 16px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(233, 219, 184, 0.35);
+  font-style: italic;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--brass-bright);
+  box-shadow: 0 0 0 1px var(--brass-bright);
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.isbn-row {
+  display: flex;
+  gap: 10px;
+}
+
+.search-field {
+  margin-bottom: 16px;
+}
+
+.search-input {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-style: italic;
+}
+
+.isbn-input {
+  flex: 1;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+/* ===== ボタン ===== */
+
+.brass-button {
+  background: linear-gradient(180deg, var(--brass-bright) 0%, var(--brass) 100%);
+  color: var(--ink);
+  border: none;
+  border-radius: 2px;
+  padding: 11px 22px;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.brass-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.brass-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.brass-button.small {
+  font-size: 14px;
+  padding: 7px 14px;
+}
+
+.brass-button.wide {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.quiet-link {
+  background: none;
+  border: none;
+  color: var(--brass-bright);
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 4px 0;
+}
+
+.quiet-link:hover {
+  color: var(--parchment);
+}
+
+/* ===== 本棚(背表紙) ===== */
+
+.shelf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 12px 8px 20px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.35) 100%);
+  border-bottom: 12px solid var(--wood-mid);
+  border-radius: 2px;
+  box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.volume {
+  display: flex;
+  flex-direction: column;
+}
+
+.spine {
+  width: 46px;
+  height: 200px;
+  border-radius: 3px 3px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  cursor: pointer;
+  box-shadow:
+    inset 2px 0 0 rgba(255, 255, 255, 0.08),
+    inset -2px 0 0 rgba(0, 0, 0, 0.25),
+    2px 0 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.spine:hover {
+  transform: translateY(-6px);
+}
+
+.spine-title {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--parchment);
+  max-height: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spine-status {
+  writing-mode: vertical-rl;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(233, 219, 184, 0.6);
+  letter-spacing: 0.1em;
+}
+
+.empty-shelf {
+  text-align: center;
+  font-style: italic;
+  color: var(--parchment-dim);
+  padding: 60px 0;
+}
+
+/* ===== 展開した本の詳細 ===== */
+
+.book-detail {
+  display: flex;
+  gap: 20px;
+  background: var(--wood-panel);
+  border: 1px solid rgba(176, 141, 87, 0.35);
+  border-top: none;
+  padding: 22px;
+  margin-top: -2px;
+  border-radius: 0 0 2px 2px;
+}
+
+.detail-cover {
+  width: 96px;
+  height: auto;
+  border-radius: 2px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+}
+
+.detail-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  margin: 0 0 4px;
+  color: var(--parchment);
+}
+
+.detail-meta {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--parchment-dim);
+  margin: 0 0 14px;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.review-list {
+  margin: 10px 0;
+}
+
+.review-line {
+  font-size: 15px;
+  color: var(--parchment);
+  margin: 4px 0;
+  padding-left: 4px;
+  border-left: 2px solid var(--brass);
+}
+
+.share-note {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--forest);
+  margin-top: 12px;
+}
+
+/* ===== ISBN検索プレビュー ===== */
+
+.lookup-preview {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(176, 141, 87, 0.4);
+}
+
+.lookup-cover {
+  width: 72px;
+  height: auto;
+  border-radius: 2px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.lookup-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+.lookup-author {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--parchment-dim);
+  margin: 0 0 10px;
+}
+
+/* ===== エラー・ローディング ===== */
+
+.error-plate {
+  background: rgba(122, 59, 46, 0.25);
+  border: 1px solid var(--wine);
+  color: #E8B8AC;
+  padding: 10px 14px;
+  border-radius: 2px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.candle-loading {
+  text-align: center;
+  font-style: italic;
+  color: var(--parchment-dim);
+  padding: 60px 0;
+}
+
+/* ===== 記録の間(管理者) ===== */
+
+.header-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.admin-link {
+  color: var(--brass-bright);
+}
+
+.records-room .study-title {
+  color: var(--brass-bright);
+}
+
+.records-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.records-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(176, 141, 87, 0.2);
+  font-size: 15px;
+}
+
+.records-row:last-child {
+  border-bottom: none;
+}
+
+.records-cell {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--parchment-dim);
+}
+
+.records-cell-name {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--parchment);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.records-cell-action {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  background: rgba(176, 141, 87, 0.2);
+  border: 1px solid var(--brass);
+  color: var(--brass-bright);
+  padding: 2px 8px;
+  border-radius: 2px;
+}
+
+.danger-button {
+  background: linear-gradient(180deg, #8C4A3B 0%, var(--wine) 100%);
+  color: var(--parchment);
+  border: none;
+  border-radius: 2px;
+  padding: 7px 14px;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.danger-button:hover {
+  transform: translateY(-1px);
+}
+
+/* ===== レスポンシブ ===== */
+
+@media (max-width: 480px) {
+  #app {
+    padding: 28px 14px 80px;
+  }
+
+  .lectern {
+    margin: 40px 16px;
+    padding: 28px 22px;
+  }
+
+  .study-title {
+    font-size: 28px;
+  }
+
+  .spine {
+    width: 38px;
+    height: 160px;
+  }
+}
+
+/* ===== キーボードフォーカス ===== */
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--brass-bright);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

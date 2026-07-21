@@ -27,5 +27,9 @@ data class Book(
     val coverUrl: String? = null,
 
     @Enumerated(EnumType.STRING)
-    val status: BookStatus = BookStatus.UNREAD
+    val status: BookStatus = BookStatus.UNREAD,
+
+    // 読書中の進捗(ページ数)。読了・未読の本ではnullのままでよい。
+    val currentPage: Int? = null,
+    val totalPage: Int? = null
 )

@@ -2,7 +2,9 @@ package com.takuan.readingtracker.controller
 
 import com.takuan.readingtracker.dto.BookRequest
 import com.takuan.readingtracker.dto.BookResponse
+import com.takuan.readingtracker.dto.ProgressRequest
 import com.takuan.readingtracker.dto.ReviewRequest
+import com.takuan.readingtracker.dto.StatusRequest
 import com.takuan.readingtracker.dto.toResponse
 import com.takuan.readingtracker.entity.Book
 import com.takuan.readingtracker.entity.Review
@@ -12,6 +14,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -50,7 +53,9 @@ class BookController(
                 author = req.author,
                 genre = req.genre,
                 coverUrl = req.coverUrl,
-                status = req.status
+                status = req.status,
+                currentPage = req.currentPage,
+                totalPage = req.totalPage
             )
         )
         return ResponseEntity.status(HttpStatus.CREATED).body(saved.toResponse())
@@ -67,9 +72,31 @@ class BookController(
                 author = req.author,
                 genre = req.genre,
                 coverUrl = req.coverUrl,
-                status = req.status
+                status = req.status,
+                currentPage = req.currentPage,
+                totalPage = req.totalPage
             )
         )
+        return ResponseEntity.ok(updated.toResponse(reviewRepository.findByBookId(id)))
+    }
+
+    // 読書中の進捗(ページ数)だけを更新する
+    @PatchMapping("/{id}/progress")
+    fun updateProgress(@PathVariable id: Long, @RequestBody req: ProgressRequest): ResponseEntity<BookResponse> {
+        val book = bookRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.notFound().build()
+        val updated = bookRepository.save(
+            book.copy(currentPage = req.currentPage, totalPage = req.totalPage)
+        )
+        return ResponseEntity.ok(updated.toResponse(reviewRepository.findByBookId(id)))
+    }
+
+    // ステータス(未読/読書中/読了)だけを更新する
+    @PatchMapping("/{id}/status")
+    fun updateStatus(@PathVariable id: Long, @RequestBody req: StatusRequest): ResponseEntity<BookResponse> {
+        val book = bookRepository.findById(id).orElse(null)
+            ?: return ResponseEntity.notFound().build()
+        val updated = bookRepository.save(book.copy(status = req.status))
         return ResponseEntity.ok(updated.toResponse(reviewRepository.findByBookId(id)))
     }
 

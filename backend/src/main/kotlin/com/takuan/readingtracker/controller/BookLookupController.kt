@@ -30,16 +30,23 @@ class BookLookupController(
         val item = result?.firstOrNull()
         val summary = item?.summary
 
-        return if (summary == null || summary.title == null) {
+        // OpenBDは書影が無い場合など、値が無い項目をnullではなく空文字列で返してくることがある。
+        // 空文字列をそのままフロントに渡すと <img src=""> のような壊れた表示になってしまうため、
+        // ここで空文字列はnullに正規化しておく。
+        fun String?.orNullIfBlank(): String? = this?.takeIf { it.isNotBlank() }
+
+        val title = summary?.title.orNullIfBlank()
+
+        return if (summary == null || title == null) {
             ResponseEntity.ok(BookLookupResponse(found = false))
         } else {
             ResponseEntity.ok(
                 BookLookupResponse(
                     found = true,
-                    title = summary.title,
-                    author = summary.author,
-                    coverUrl = summary.cover,
-                    publisher = summary.publisher
+                    title = title,
+                    author = summary.author.orNullIfBlank(),
+                    coverUrl = summary.cover.orNullIfBlank(),
+                    publisher = summary.publisher.orNullIfBlank()
                 )
             )
         }

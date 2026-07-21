@@ -13,7 +13,7 @@ class CorsConfig {
         override fun addCorsMappings(registry: CorsRegistry) {
             registry.addMapping("/api/**")
                 .allowedOrigins("*") // 本番デプロイ時はGleamフロントのURLに絞る
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
         }
     }

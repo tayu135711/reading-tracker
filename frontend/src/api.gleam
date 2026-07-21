@@ -4,10 +4,27 @@ import gleam/int
 import gleam/json
 import lustre/effect.{type Effect}
 import lustre_http
-import types.{type Book, type LookupResult, books_decoder, lookup_decoder, share_uuid_decoder}
+import types.{
+  type Book, type LookupResult, books_decoder, lookup_decoder,
+  share_uuid_decoder,
+}
 
 // 本番バックエンド(Render)のURL
 const api_base = "https://reading-tracker-backend-wc3c.onrender.com/api"
+
+// lustre_httpにはPATCHの組み込みヘルパーが無いので、gleam/http/requestで自前で組み立てる。
+fn patch(
+  url: String,
+  body: json.Json,
+  expect: lustre_http.Expect(msg),
+) -> Effect(msg) {
+  let assert Ok(req) = request.to(url)
+  req
+  |> request.set_method(http.Patch)
+  |> request.set_header("Content-Type", "application/json")
+  |> request.set_body(json.to_string(body))
+  |> lustre_http.send(expect)
+}
 
 pub fn fetch_books(
   on_result: fn(Result(List(Book), lustre_http.HttpError)) -> msg,
@@ -59,6 +76,40 @@ pub fn add_review(
 
   lustre_http.post(
     api_base <> "/books/" <> int.to_string(book_id) <> "/reviews",
+    body,
+    lustre_http.expect_anything(on_result),
+  )
+}
+
+pub fn update_status(
+  book_id: Int,
+  status: types.BookStatus,
+  on_result: fn(Result(Nil, lustre_http.HttpError)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([#("status", json.string(types.status_to_string(status)))])
+
+  patch(
+    api_base <> "/books/" <> int.to_string(book_id) <> "/status",
+    body,
+    lustre_http.expect_anything(on_result),
+  )
+}
+
+pub fn update_progress(
+  book_id: Int,
+  current_page: Int,
+  total_page: Int,
+  on_result: fn(Result(Nil, lustre_http.HttpError)) -> msg,
+) -> Effect(msg) {
+  let body =
+    json.object([
+      #("currentPage", json.int(current_page)),
+      #("totalPage", json.int(total_page)),
+    ])
+
+  patch(
+    api_base <> "/books/" <> int.to_string(book_id) <> "/progress",
     body,
     lustre_http.expect_anything(on_result),
   )

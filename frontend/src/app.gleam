@@ -10,7 +10,10 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import lustre_http
-import types.{type Book, type LookupResult, type Review, status_label}
+import types.{
+  type Book, type BookStatus, type LookupResult, type Review, Finished,
+  Reading, Unread, status_label,
+}
 
 pub fn main() {
   let app = lustre.application(init, update, view)
@@ -28,6 +31,7 @@ pub type Model {
     error: Option(String),
     expanded_book: Option(Int),
     search_query: String,
+    status_filter: Option(BookStatus),
 
     // 手動登録フォーム
     show_manual_form: Bool,
@@ -46,6 +50,10 @@ pub type Model {
     review_rating: Int,
     review_comment: String,
 
+    // 読書中の進捗フォーム(開いている本棚の1冊分だけ保持)
+    progress_current_input: String,
+    progress_total_input: String,
+
     // 共有リンク
     share_link: Option(String),
   )
@@ -59,6 +67,7 @@ fn init(_flags) -> #(Model, Effect(Msg)) {
       error: None,
       expanded_book: None,
       search_query: "",
+      status_filter: None,
       show_manual_form: False,
       new_title: "",
       new_author: "",
@@ -70,6 +79,8 @@ fn init(_flags) -> #(Model, Effect(Msg)) {
       review_target: None,
       review_rating: 5,
       review_comment: "",
+      progress_current_input: "",
+      progress_total_input: "",
       share_link: None,
     )
   #(model, api.fetch_books(ApiReturnedBooks))
@@ -82,6 +93,7 @@ pub type Msg {
   ApiReturnedBooks(Result(List(Book), lustre_http.HttpError))
   UserToggledBookSpine(Int)
   UserUpdatedSearchQuery(String)
+  UserSelectedStatusFilter(Option(BookStatus))
 
   // 手動登録
   UserToggledManualForm
@@ -104,6 +116,16 @@ pub type Msg {
   UserSubmittedReview(Int)
   ApiReviewAdded(Result(Nil, lustre_http.HttpError))
 
+  // ステータス変更
+  UserChangedBookStatus(Int, BookStatus)
+  ApiStatusUpdated(Result(Nil, lustre_http.HttpError))
+
+  // 読書中の進捗
+  UserUpdatedCurrentPageInput(String)
+  UserUpdatedTotalPageInput(String)
+  UserSubmittedProgress(Int)
+  ApiProgressUpdated(Result(Nil, lustre_http.HttpError))
+
   // 共有
   UserRequestedShareLink(Int)
   ApiShareLinkCreated(Result(String, lustre_http.HttpError))
@@ -122,19 +144,40 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(..model, loading: False, error: Some("本棚を読み込めんかった")),
       effect.none(),
     )
-    UserToggledBookSpine(id) -> #(
-      Model(
-        ..model,
-        expanded_book: case model.expanded_book == Some(id) {
-          True -> None
-          False -> Some(id)
-        },
-        share_link: None,
-      ),
-      effect.none(),
-    )
+    UserToggledBookSpine(id) -> {
+      let opening = model.expanded_book != Some(id)
+      let progress_seed = case opening {
+        True ->
+          list.find(model.books, fn(b) { b.id == id })
+          |> option.from_result
+        False -> None
+      }
+      #(
+        Model(
+          ..model,
+          expanded_book: case opening {
+            True -> Some(id)
+            False -> None
+          },
+          share_link: None,
+          progress_current_input: case progress_seed {
+            Some(book) -> option_int_to_string(book.current_page)
+            None -> ""
+          },
+          progress_total_input: case progress_seed {
+            Some(book) -> option_int_to_string(book.total_page)
+            None -> ""
+          },
+        ),
+        effect.none(),
+      )
+    }
     UserUpdatedSearchQuery(v) -> #(
       Model(..model, search_query: v),
+      effect.none(),
+    )
+    UserSelectedStatusFilter(filter) -> #(
+      Model(..model, status_filter: filter),
       effect.none(),
     )
 
@@ -227,6 +270,41 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
     ApiReviewAdded(Error(_)) -> #(
       Model(..model, error: Some("感想の登録に失敗した")),
+      effect.none(),
+    )
+
+    // ---- ステータス変更 ----
+    UserChangedBookStatus(id, status) -> #(
+      model,
+      api.update_status(id, status, ApiStatusUpdated),
+    )
+    ApiStatusUpdated(Ok(_)) -> #(model, api.fetch_books(ApiReturnedBooks))
+    ApiStatusUpdated(Error(_)) -> #(
+      Model(..model, error: Some("ステータスの更新に失敗した")),
+      effect.none(),
+    )
+
+    // ---- 読書中の進捗 ----
+    UserUpdatedCurrentPageInput(v) -> #(
+      Model(..model, progress_current_input: v),
+      effect.none(),
+    )
+    UserUpdatedTotalPageInput(v) -> #(
+      Model(..model, progress_total_input: v),
+      effect.none(),
+    )
+    UserSubmittedProgress(id) -> #(
+      model,
+      api.update_progress(
+        id,
+        parse_int_or(model.progress_current_input, 0),
+        parse_int_or(model.progress_total_input, 0),
+        ApiProgressUpdated,
+      ),
+    )
+    ApiProgressUpdated(Ok(_)) -> #(model, api.fetch_books(ApiReturnedBooks))
+    ApiProgressUpdated(Error(_)) -> #(
+      Model(..model, error: Some("進捗の更新に失敗した")),
       effect.none(),
     )
 
@@ -366,7 +444,8 @@ fn view_manual_form(model: Model) -> Element(Msg) {
 }
 
 fn view_shelf(model: Model) -> Element(Msg) {
-  let filtered = filter_books(model.books, model.search_query)
+  let filtered =
+    filter_books(model.books, model.search_query, model.status_filter)
 
   html.div([], [
     html.div([attribute.class("ledger-field search-field")], [
@@ -377,6 +456,7 @@ fn view_shelf(model: Model) -> Element(Msg) {
         attribute.placeholder("題・著者・分類で棚を探す"),
       ]),
     ]),
+    view_status_tabs(model.status_filter),
     case model.books, filtered {
       [], _ ->
         html.p([attribute.class("empty-shelf")], [
@@ -395,17 +475,55 @@ fn view_shelf(model: Model) -> Element(Msg) {
   ])
 }
 
-fn filter_books(books: List(Book), query: String) -> List(Book) {
+fn view_status_tabs(active: Option(BookStatus)) -> Element(Msg) {
+  let tabs = [
+    #("すべて", None),
+    #("未読", Some(Unread)),
+    #("読書中", Some(Reading)),
+    #("読了", Some(Finished)),
+  ]
+
+  html.div(
+    [attribute.class("status-tabs")],
+    list.map(tabs, fn(tab) {
+      let #(label, value) = tab
+      let is_active = active == value
+      html.button(
+        [
+          attribute.class(case is_active {
+            True -> "status-tab status-tab-active"
+            False -> "status-tab"
+          }),
+          event.on_click(UserSelectedStatusFilter(value)),
+        ],
+        [element.text(label)],
+      )
+    }),
+  )
+}
+
+fn filter_books(
+  books: List(Book),
+  query: String,
+  status_filter: Option(BookStatus),
+) -> List(Book) {
   let needle = string.lowercase(string.trim(query))
-  case needle {
-    "" -> books
-    _ ->
-      list.filter(books, fn(book) {
+  books
+  |> list.filter(fn(book) {
+    case needle {
+      "" -> True
+      _ ->
         string.contains(string.lowercase(book.title), needle)
         || string.contains(string.lowercase(book.author), needle)
         || string.contains(string.lowercase(book.genre), needle)
-      })
-  }
+    }
+  })
+  |> list.filter(fn(book) {
+    case status_filter {
+      None -> True
+      Some(s) -> book.status == s
+    }
+  })
 }
 
 const spine_colors = ["#6B3226", "#4A5D43", "#3A4A63", "#5C4A2E", "#5A3B5C"]
@@ -453,6 +571,11 @@ fn view_book_detail(book: Book, model: Model) -> Element(Msg) {
       html.p([attribute.class("detail-meta")], [
         element.text(book.author <> " ・ " <> book.genre),
       ]),
+      view_status_switcher(book),
+      case book.status {
+        Reading -> view_progress_form(book, model)
+        _ -> element.none()
+      },
       html.div([attribute.class("review-list")], list.map(book.reviews, view_review)),
       html.div([attribute.class("detail-actions")], [
         html.button(
@@ -477,6 +600,70 @@ fn view_book_detail(book: Book, model: Model) -> Element(Msg) {
       },
     ]),
   ])
+}
+
+fn view_status_switcher(book: Book) -> Element(Msg) {
+  let options = [#("未読", Unread), #("読書中", Reading), #("読了", Finished)]
+
+  html.div(
+    [attribute.class("status-switcher")],
+    list.map(options, fn(opt) {
+      let #(label, value) = opt
+      let is_active = book.status == value
+      html.button(
+        [
+          attribute.class(case is_active {
+            True -> "status-switch-button status-switch-active"
+            False -> "status-switch-button"
+          }),
+          event.on_click(UserChangedBookStatus(book.id, value)),
+        ],
+        [element.text(label)],
+      )
+    }),
+  )
+}
+
+fn view_progress_form(book: Book, model: Model) -> Element(Msg) {
+  html.div([attribute.class("progress-form")], [
+    html.span([attribute.class("progress-label")], [element.text("読書の進み具合:")]),
+    html.input([
+      attribute.class("progress-input"),
+      attribute.type_("number"),
+      attribute.min("0"),
+      attribute.value(model.progress_current_input),
+      event.on_input(UserUpdatedCurrentPageInput),
+      attribute.placeholder("現在ページ"),
+    ]),
+    html.span([attribute.class("progress-separator")], [element.text("/")]),
+    html.input([
+      attribute.class("progress-input"),
+      attribute.type_("number"),
+      attribute.min("0"),
+      attribute.value(model.progress_total_input),
+      event.on_input(UserUpdatedTotalPageInput),
+      attribute.placeholder("総ページ"),
+    ]),
+    html.button(
+      [
+        attribute.class("brass-button small"),
+        event.on_click(UserSubmittedProgress(book.id)),
+      ],
+      [element.text("更新")],
+    ),
+    case book.current_page, book.total_page {
+      Some(current), Some(total) if total > 0 ->
+        html.p([attribute.class("progress-percent")], [
+          element.text(percent_label(current, total)),
+        ])
+      _, _ -> element.none()
+    },
+  ])
+}
+
+fn percent_label(current: Int, total: Int) -> String {
+  let pct = current * 100 / total
+  int.to_string(pct) <> "% 読んだで"
 }
 
 fn view_review(review: Review) -> Element(Msg) {
@@ -522,5 +709,12 @@ fn parse_int_or(value: String, default: Int) -> Int {
   case int.parse(value) {
     Ok(n) -> n
     Error(_) -> default
+  }
+}
+
+fn option_int_to_string(value: Option(Int)) -> String {
+  case value {
+    Some(n) -> int.to_string(n)
+    None -> ""
   }
 }

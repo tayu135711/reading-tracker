@@ -375,6 +375,10 @@ textarea {
   flex-direction: column;
 }
 
+.volume-expanded {
+  flex: 1 1 100%;
+}
+
 .spine {
   width: 46px;
   height: 200px;

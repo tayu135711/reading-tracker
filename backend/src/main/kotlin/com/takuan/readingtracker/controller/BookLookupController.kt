@@ -1,6 +1,7 @@
 package com.takuan.readingtracker.controller
 
 import com.takuan.readingtracker.dto.BookLookupResponse
+import com.takuan.readingtracker.dto.GoogleBooksResponse
 import com.takuan.readingtracker.dto.OpenBdItem
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -40,15 +41,33 @@ class BookLookupController(
         return if (summary == null || title == null) {
             ResponseEntity.ok(BookLookupResponse(found = false))
         } else {
+            // OpenBDは2023年の方針変更以降、ホワイトリストに入っていない出版社の書影を
+            // 返さなくなった(nullになる)ことが多い。その場合はGoogle Books APIを予備として使う。
+            val coverUrl = summary.cover.orNullIfBlank() ?: fetchGoogleBooksCover(cleanIsbn)
+
             ResponseEntity.ok(
                 BookLookupResponse(
                     found = true,
                     title = title,
                     author = summary.author.orNullIfBlank(),
-                    coverUrl = summary.cover.orNullIfBlank(),
+                    coverUrl = coverUrl,
                     publisher = summary.publisher.orNullIfBlank()
                 )
             )
+        }
+    }
+
+    private fun fetchGoogleBooksCover(isbn: String): String? {
+        return try {
+            val url = "https://www.googleapis.com/books/v1/volumes?q=isbn:$isbn"
+            val response = restTemplate.getForObject(url, GoogleBooksResponse::class.java)
+            val imageLinks = response?.items?.firstOrNull()?.volumeInfo?.imageLinks
+            val thumbnail = imageLinks?.thumbnail ?: imageLinks?.smallThumbnail
+            // GoogleはたまにHTTPのURLを返すので、HTTPSに揃えておく(混在コンテンツで
+            // ブラウザに画像をブロックされるのを防ぐため)
+            thumbnail?.replace("http://", "https://")
+        } catch (e: Exception) {
+            null
         }
     }
 }

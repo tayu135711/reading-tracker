@@ -539,25 +539,33 @@ fn spine_color(index: Int) -> String {
 
 fn view_spine(book: Book, index: Int, model: Model) -> Element(Msg) {
   let is_open = model.expanded_book == Some(book.id)
-  html.div([attribute.class("volume")], [
-    html.div(
-      [
-        attribute.class("spine"),
-        attribute.style("background", spine_color(index)),
-        event.on_click(UserToggledBookSpine(book.id)),
-      ],
-      [
-        html.span([attribute.class("spine-title")], [element.text(book.title)]),
-        html.span([attribute.class("spine-status")], [
-          element.text(status_label(book.status)),
-        ]),
-      ],
-    ),
-    case is_open {
-      True -> view_book_detail(book, model)
-      False -> element.none()
-    },
-  ])
+  html.div(
+    [
+      attribute.class(case is_open {
+        True -> "volume volume-expanded"
+        False -> "volume"
+      }),
+    ],
+    [
+      html.div(
+        [
+          attribute.class("spine"),
+          attribute.style("background", spine_color(index)),
+          event.on_click(UserToggledBookSpine(book.id)),
+        ],
+        [
+          html.span([attribute.class("spine-title")], [element.text(book.title)]),
+          html.span([attribute.class("spine-status")], [
+            element.text(status_label(book.status)),
+          ]),
+        ],
+      ),
+      case is_open {
+        True -> view_book_detail(book, model)
+        False -> element.none()
+      },
+    ],
+  )
 }
 
 fn view_book_detail(book: Book, model: Model) -> Element(Msg) {

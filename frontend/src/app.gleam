@@ -10,6 +10,7 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import lustre_http
+import session
 import types.{
   type Book, type BookStatus, type LookupResult, type Review, Finished,
   Reading, Unread, status_label,
@@ -56,6 +57,12 @@ pub type Model {
 
     // 共有リンク
     share_link: Option(String),
+
+    // 設定(引き継ぎコード)
+    show_settings: Bool,
+    session_id: String,
+    transfer_code_input: String,
+    transfer_message: Option(String),
   )
 }
 
@@ -82,6 +89,10 @@ fn init(_flags) -> #(Model, Effect(Msg)) {
       progress_current_input: "",
       progress_total_input: "",
       share_link: None,
+      show_settings: False,
+      session_id: session.get_or_create_session_id(),
+      transfer_code_input: "",
+      transfer_message: None,
     )
   #(model, api.fetch_books(ApiReturnedBooks))
 }
@@ -129,6 +140,11 @@ pub type Msg {
   // 共有
   UserRequestedShareLink(Int)
   ApiShareLinkCreated(Result(String, lustre_http.HttpError))
+
+  // 設定(引き継ぎコード)
+  UserToggledSettings
+  UserUpdatedTransferCodeInput(String)
+  UserSubmittedTransferCode
 }
 
 // ===== update =====
@@ -321,6 +337,43 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(..model, error: Some("共有リンクの発行に失敗した")),
       effect.none(),
     )
+
+    // ---- 設定(引き継ぎコード) ----
+    UserToggledSettings -> #(
+      Model(
+        ..model,
+        show_settings: !model.show_settings,
+        transfer_code_input: "",
+        transfer_message: None,
+      ),
+      effect.none(),
+    )
+    UserUpdatedTransferCodeInput(v) -> #(
+      Model(..model, transfer_code_input: v),
+      effect.none(),
+    )
+    UserSubmittedTransferCode -> {
+      let code = string.trim(model.transfer_code_input)
+      case code {
+        "" -> #(
+          Model(..model, transfer_message: Some("コードを入力してな")),
+          effect.none(),
+        )
+        _ -> {
+          let new_id = session.set_session_id(code)
+          #(
+            Model(
+              ..model,
+              session_id: new_id,
+              transfer_code_input: "",
+              transfer_message: Some("引き継いだで。本棚を読み込み直すな"),
+              loading: True,
+            ),
+            api.fetch_books(ApiReturnedBooks),
+          )
+        }
+      }
+    }
   }
 }
 
@@ -333,7 +386,20 @@ fn view(model: Model) -> Element(Msg) {
         html.p([attribute.class("eyebrow")], [element.text("蔵書録")]),
         html.h1([attribute.class("study-title")], [element.text("わたしの書斎")]),
       ]),
+      html.button(
+        [attribute.class("quiet-link"), event.on_click(UserToggledSettings)],
+        [
+          element.text(case model.show_settings {
+            True -> "設定を閉じる"
+            False -> "機種変・引き継ぎ"
+          }),
+        ],
+      ),
     ]),
+    case model.show_settings {
+      True -> view_settings_panel(model)
+      False -> element.none()
+    },
     view_isbn_panel(model),
     view_manual_toggle(model),
     case model.show_manual_form {
@@ -347,6 +413,39 @@ fn view(model: Model) -> Element(Msg) {
     case model.loading {
       True -> html.p([attribute.class("candle-loading")], [element.text("灯りを点けとる...")])
       False -> view_shelf(model)
+    },
+  ])
+}
+
+fn view_settings_panel(model: Model) -> Element(Msg) {
+  html.div([attribute.class("brass-panel")], [
+    html.p([attribute.class("panel-label")], [element.text("この本棚の引き継ぎコード")]),
+    html.p([attribute.class("lookup-author")], [
+      element.text("新しい端末で下のコードを入力すると、同じ本棚を開けるで。他の人には教えんように。"),
+    ]),
+    html.div([attribute.class("isbn-row")], [
+      html.input([
+        attribute.class("isbn-input"),
+        attribute.value(model.session_id),
+        attribute.readonly(True),
+      ]),
+    ]),
+    html.p([attribute.class("panel-label")], [element.text("他の端末のコードで引き継ぐ")]),
+    html.div([attribute.class("isbn-row")], [
+      html.input([
+        attribute.class("isbn-input"),
+        attribute.value(model.transfer_code_input),
+        event.on_input(UserUpdatedTransferCodeInput),
+        attribute.placeholder("引き継ぎコードを貼り付け"),
+      ]),
+      html.button(
+        [attribute.class("brass-button"), event.on_click(UserSubmittedTransferCode)],
+        [element.text("引き継ぐ")],
+      ),
+    ]),
+    case model.transfer_message {
+      Some(msg) -> html.p([attribute.class("error-plate")], [element.text(msg)])
+      None -> element.none()
     },
   ])
 }

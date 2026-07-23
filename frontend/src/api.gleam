@@ -4,6 +4,7 @@ import gleam/int
 import gleam/json
 import lustre/effect.{type Effect}
 import lustre_http
+import session
 import types.{
   type Book, type LookupResult, books_decoder, lookup_decoder,
   share_uuid_decoder,
@@ -11,6 +12,34 @@ import types.{
 
 // 本番バックエンド(Render)のURL
 const api_base = "https://reading-tracker-backend-wc3c.onrender.com/api"
+
+// 自分の本棚を識別するためのヘッダー。端末ごとに発行されるセッションIDを毎回付ける。
+fn set_session_header(req: request.Request(String)) -> request.Request(String) {
+  request.set_header(req, "X-Session-Id", session.get_or_create_session_id())
+}
+
+// GET(セッションヘッダー付き)
+fn get(url: String, expect: lustre_http.Expect(msg)) -> Effect(msg) {
+  let assert Ok(req) = request.to(url)
+  req
+  |> set_session_header
+  |> lustre_http.send(expect)
+}
+
+// POST(セッションヘッダー付き)
+fn post(
+  url: String,
+  body: json.Json,
+  expect: lustre_http.Expect(msg),
+) -> Effect(msg) {
+  let assert Ok(req) = request.to(url)
+  req
+  |> request.set_method(http.Post)
+  |> request.set_header("Content-Type", "application/json")
+  |> request.set_body(json.to_string(body))
+  |> set_session_header
+  |> lustre_http.send(expect)
+}
 
 // lustre_httpにはPATCHの組み込みヘルパーが無いので、gleam/http/requestで自前で組み立てる。
 fn patch(
@@ -23,16 +52,14 @@ fn patch(
   |> request.set_method(http.Patch)
   |> request.set_header("Content-Type", "application/json")
   |> request.set_body(json.to_string(body))
+  |> set_session_header
   |> lustre_http.send(expect)
 }
 
 pub fn fetch_books(
   on_result: fn(Result(List(Book), lustre_http.HttpError)) -> msg,
 ) -> Effect(msg) {
-  lustre_http.get(
-    api_base <> "/books",
-    lustre_http.expect_json(books_decoder(), on_result),
-  )
+  get(api_base <> "/books", lustre_http.expect_json(books_decoder(), on_result))
 }
 
 pub fn create_book(
@@ -55,11 +82,7 @@ pub fn create_book(
       #("status", json.string("UNREAD")),
     ])
 
-  lustre_http.post(
-    api_base <> "/books",
-    body,
-    lustre_http.expect_anything(on_result),
-  )
+  post(api_base <> "/books", body, lustre_http.expect_anything(on_result))
 }
 
 pub fn add_review(
@@ -74,7 +97,7 @@ pub fn add_review(
       #("comment", json.string(comment)),
     ])
 
-  lustre_http.post(
+  post(
     api_base <> "/books/" <> int.to_string(book_id) <> "/reviews",
     body,
     lustre_http.expect_anything(on_result),
@@ -119,7 +142,7 @@ pub fn create_share_link(
   book_id: Int,
   on_result: fn(Result(String, lustre_http.HttpError)) -> msg,
 ) -> Effect(msg) {
-  lustre_http.post(
+  post(
     api_base <> "/books/" <> int.to_string(book_id) <> "/share",
     json.object([]),
     lustre_http.expect_json(share_uuid_decoder(), on_result),
@@ -127,6 +150,7 @@ pub fn create_share_link(
 }
 
 // ISBNから書誌情報を検索する(OpenBD連携、バックエンド経由)
+// これは本棚に紐づかない共通の検索なのでセッションヘッダーは不要。
 pub fn lookup_isbn(
   isbn: String,
   on_result: fn(Result(LookupResult, lustre_http.HttpError)) -> msg,

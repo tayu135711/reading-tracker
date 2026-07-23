@@ -19,9 +19,12 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
+// X-Session-Idヘッダー(フロントがlocalStorageで管理する端末ごとのID)で
+// 本棚の持ち主を判定する。ヘッダーが無いリクエストはSpringが自動で400を返す。
 @RestController
 @RequestMapping("/api/books")
 class BookController(
@@ -29,26 +32,33 @@ class BookController(
     private val reviewRepository: ReviewRepository
 ) {
 
-    // 一覧取得
+    // 一覧取得(自分の本棚だけ)
     @GetMapping
-    fun getAll(): List<BookResponse> =
-        bookRepository.findAll().map { book ->
+    fun getAll(@RequestHeader("X-Session-Id") ownerId: String): List<BookResponse> =
+        bookRepository.findAllByOwnerId(ownerId).map { book ->
             book.toResponse(reviewRepository.findByBookId(book.id))
         }
 
     // 1冊取得
     @GetMapping("/{id}")
-    fun getOne(@PathVariable id: Long): ResponseEntity<BookResponse> {
-        val book = bookRepository.findById(id).orElse(null)
+    fun getOne(
+        @PathVariable id: Long,
+        @RequestHeader("X-Session-Id") ownerId: String
+    ): ResponseEntity<BookResponse> {
+        val book = bookRepository.findByIdAndOwnerId(id, ownerId)
             ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(book.toResponse(reviewRepository.findByBookId(id)))
     }
 
     // 登録
     @PostMapping
-    fun create(@RequestBody req: BookRequest): ResponseEntity<BookResponse> {
+    fun create(
+        @RequestBody req: BookRequest,
+        @RequestHeader("X-Session-Id") ownerId: String
+    ): ResponseEntity<BookResponse> {
         val saved = bookRepository.save(
             Book(
+                ownerId = ownerId,
                 title = req.title,
                 author = req.author,
                 genre = req.genre,
@@ -63,11 +73,16 @@ class BookController(
 
     // 更新
     @PutMapping("/{id}")
-    fun update(@PathVariable id: Long, @RequestBody req: BookRequest): ResponseEntity<BookResponse> {
-        if (!bookRepository.existsById(id)) return ResponseEntity.notFound().build()
+    fun update(
+        @PathVariable id: Long,
+        @RequestBody req: BookRequest,
+        @RequestHeader("X-Session-Id") ownerId: String
+    ): ResponseEntity<BookResponse> {
+        if (bookRepository.findByIdAndOwnerId(id, ownerId) == null) return ResponseEntity.notFound().build()
         val updated = bookRepository.save(
             Book(
                 id = id,
+                ownerId = ownerId,
                 title = req.title,
                 author = req.author,
                 genre = req.genre,
@@ -82,8 +97,12 @@ class BookController(
 
     // 読書中の進捗(ページ数)だけを更新する
     @PatchMapping("/{id}/progress")
-    fun updateProgress(@PathVariable id: Long, @RequestBody req: ProgressRequest): ResponseEntity<BookResponse> {
-        val book = bookRepository.findById(id).orElse(null)
+    fun updateProgress(
+        @PathVariable id: Long,
+        @RequestBody req: ProgressRequest,
+        @RequestHeader("X-Session-Id") ownerId: String
+    ): ResponseEntity<BookResponse> {
+        val book = bookRepository.findByIdAndOwnerId(id, ownerId)
             ?: return ResponseEntity.notFound().build()
         val updated = bookRepository.save(
             book.copy(currentPage = req.currentPage, totalPage = req.totalPage)
@@ -93,8 +112,12 @@ class BookController(
 
     // ステータス(未読/読書中/読了)だけを更新する
     @PatchMapping("/{id}/status")
-    fun updateStatus(@PathVariable id: Long, @RequestBody req: StatusRequest): ResponseEntity<BookResponse> {
-        val book = bookRepository.findById(id).orElse(null)
+    fun updateStatus(
+        @PathVariable id: Long,
+        @RequestBody req: StatusRequest,
+        @RequestHeader("X-Session-Id") ownerId: String
+    ): ResponseEntity<BookResponse> {
+        val book = bookRepository.findByIdAndOwnerId(id, ownerId)
             ?: return ResponseEntity.notFound().build()
         val updated = bookRepository.save(book.copy(status = req.status))
         return ResponseEntity.ok(updated.toResponse(reviewRepository.findByBookId(id)))
@@ -102,16 +125,23 @@ class BookController(
 
     // 削除
     @DeleteMapping("/{id}")
-    fun delete(@PathVariable id: Long): ResponseEntity<Void> {
-        if (!bookRepository.existsById(id)) return ResponseEntity.notFound().build()
+    fun delete(
+        @PathVariable id: Long,
+        @RequestHeader("X-Session-Id") ownerId: String
+    ): ResponseEntity<Void> {
+        if (bookRepository.findByIdAndOwnerId(id, ownerId) == null) return ResponseEntity.notFound().build()
         bookRepository.deleteById(id)
         return ResponseEntity.noContent().build()
     }
 
     // 感想を追加
     @PostMapping("/{id}/reviews")
-    fun addReview(@PathVariable id: Long, @RequestBody req: ReviewRequest): ResponseEntity<BookResponse> {
-        val book = bookRepository.findById(id).orElse(null)
+    fun addReview(
+        @PathVariable id: Long,
+        @RequestBody req: ReviewRequest,
+        @RequestHeader("X-Session-Id") ownerId: String
+    ): ResponseEntity<BookResponse> {
+        val book = bookRepository.findByIdAndOwnerId(id, ownerId)
             ?: return ResponseEntity.notFound().build()
         reviewRepository.save(
             Review(bookId = id, rating = req.rating, comment = req.comment)
